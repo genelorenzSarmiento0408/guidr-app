@@ -10,7 +10,7 @@ export interface Profile {
   createdAt: string;
   mentorshipLink?: string;
   mentorshipPrice?: number;
-  userType: ('student' | 'company')[];
+  userType: ("student" | "company")[];
 }
 
 export interface Post {
