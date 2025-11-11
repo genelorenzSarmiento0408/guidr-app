@@ -1,14 +1,10 @@
-import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { useNavigate } from "react-router-dom";
-import type { Profile } from "../types";
-import ProfileModal from "../components/ProfileModal";
-import { Search, Users, Briefcase, Code, GraduationCap } from "lucide-react";
+"use client";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || "",
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ""
-);
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type { Profile } from "@/lib/types";
+import { Search, Users, Briefcase, Code, GraduationCap } from "lucide-react";
+import ProfileModal from "@/components/ProfileModal";
 
 type PostType = "internship" | "collaboration" | "mentorship";
 
@@ -17,8 +13,8 @@ interface Match {
   profile: Profile;
 }
 
-export default function CreatePost() {
-  // const navigate = useNavigate();
+export default function CreatePostClient() {
+  const supabase = createClient();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -83,6 +79,7 @@ export default function CreatePost() {
             createdAt: profile.created_at,
             mentorshipLink: profile.mentorship_link,
             mentorshipPrice: profile.mentorship_price,
+            userType: profile.user_type || [],
           },
         };
       });
@@ -115,14 +112,14 @@ export default function CreatePost() {
   }
 
   return (
-    <div className="max-w-screen-xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">
             Find Your Perfect Match
           </h1>
           <p className="mt-2 text-sm md:text-base text-gray-600">
-            Describe your opportunity and we'll match you with the best
+            Describe your opportunity and we&apos;ll match you with the best
             candidates.
           </p>
         </div>
@@ -237,7 +234,7 @@ export default function CreatePost() {
               placeholder="e.g., React, Node.js, Python (separate with commas)"
             />
             <p className="mt-1 text-xs md:text-sm text-gray-500">
-              Adding skills helps us find better matches, but it's optional
+              Adding skills helps us find better matches, but it&apos;s optional
             </p>
           </div>
 
