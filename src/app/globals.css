@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --guidr-green: #228c1d;
+  --guidr-dark: #162d10;
+  --guidr-light: #f9f9f9;
 }
 
 @theme inline {
@@ -10,6 +13,9 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-guidr-green: var(--guidr-green);
+  --color-guidr-dark: var(--guidr-dark);
+  --color-guidr-light: var(--guidr-light);
 }
 
 @media (prefers-color-scheme: dark) {
