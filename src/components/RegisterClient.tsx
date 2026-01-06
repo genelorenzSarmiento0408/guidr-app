@@ -113,15 +113,21 @@ export default function RegisterClient() {
             role: "organization",
             organization_name: orgForm.organizationName,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (signUpError) throw signUpError;
 
       if (data.user) {
-        // Profile is automatically created by database trigger
-        // Redirect to home or confirmation page
-        router.push("/");
+        // Check if email confirmation is required
+        if (data.session) {
+          // User is already logged in, redirect to browse
+          router.push("/browse");
+        } else {
+          // Email confirmation required
+          setError("Please check your email to confirm your account");
+        }
         router.refresh();
       }
     } catch (err) {
@@ -175,15 +181,21 @@ export default function RegisterClient() {
             last_name: mentorForm.lastName,
             profession: mentorForm.profession,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (signUpError) throw signUpError;
 
       if (data.user) {
-        // Profile is automatically created by database trigger
-        // Redirect to home or confirmation page
-        router.push("/");
+        // Check if email confirmation is required
+        if (data.session) {
+          // User is already logged in, redirect to browse
+          router.push("/browse");
+        } else {
+          // Email confirmation required
+          setError("Please check your email to confirm your account");
+        }
         router.refresh();
       }
     } catch (err) {
@@ -195,7 +207,7 @@ export default function RegisterClient() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8"
+      className="min-h-screen flex items-center justify-center"
       style={{
         backgroundImage: "url('/registration-pattern.png')",
         backgroundSize: "cover",
@@ -203,7 +215,7 @@ export default function RegisterClient() {
         backgroundColor: "#162D10",
       }}
     >
-      <div className="w-full flex items-center justify-between max-w-7xl gap-12">
+      <div className="w-full flex items-center justify-between max-w-7xl gap-12 px-8">
         {/* Left side - Branding */}
         <div className="hidden lg:flex flex-1 flex-col justify-between text-guidr-light min-h-[600px]">
           <div>

@@ -41,6 +41,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // Redirect to home page
-  return NextResponse.redirect(`${origin}/`);
+  // Redirect to browse page after successful authentication
+  return NextResponse.redirect(`${origin}/browse`);
 }
