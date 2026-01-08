@@ -1,11 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { Profile } from "@/lib/types";
-import { Camera, Loader2, DollarSign } from "lucide-react";
-import ProfileSaveModal from "@/components/ProfileSaveModal";
+import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
+import Image from "next/image";
+
+interface Profile {
+  id: string;
+  user_id: string;
+  username: string;
+  program: string;
+  photo_url?: string;
+  bio?: string;
+  skills?: string;
+  user_type: string[];
+  year_standing?: string;
+  chat_enabled?: boolean;
+}
 
 interface ProfilePageClientProps {
   initialProfile: Profile | null;
@@ -18,527 +30,482 @@ export default function ProfilePageClient({
 }: ProfilePageClientProps) {
   const router = useRouter();
   const supabase = createClient();
-  const [profile, setProfile] = useState<Partial<Profile>>(
-    initialProfile || {}
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    username: initialProfile?.username || "",
+    program: initialProfile?.program || "",
+    photo_url: initialProfile?.photo_url || "",
+    bio: initialProfile?.bio || "",
+    skills: initialProfile?.skills || "",
+    firstName: "",
+    lastName: "",
+    headline: "",
+    profession: "",
+  });
+
+  const [userEmail, setUserEmail] = useState("");
+  const [connectedProvider, setConnectedProvider] = useState<string | null>(
+    null
   );
-  const [saving, setSaving] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [error, setError] = useState("");
-  const [photoError, setPhotoError] = useState("");
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [userTypes, setUserTypes] = useState<("student" | "company")[]>(
-    initialProfile?.userType || []
-  );
 
-  async function handlePhotoUpload(file: File) {
-    try {
-      setUploadingPhoto(true);
-      setPhotoError("");
+  const isOrganization = initialProfile?.user_type?.includes("company");
+  const isMentor = initialProfile?.user_type?.includes("student");
 
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error("Image size should be less than 5MB");
-      }
-
-      if (!file.type.startsWith("image/")) {
-        throw new Error("Please upload an image file");
-      }
-
-      const reader = new FileReader();
-      const base64Promise = new Promise((resolve, reject) => {
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-      });
-      reader.readAsDataURL(file);
-      const base64Image = await base64Promise;
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/moderate-image`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            image: base64Image,
-            userId: user.id,
-          }),
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (isOwnProfile) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          setUserEmail(user.email || "");
+          const providers = user.app_metadata?.providers || [];
+          if (providers.includes("google")) {
+            setConnectedProvider("google");
+          }
         }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to upload image");
       }
+    };
+    fetchUserData();
+  }, [isOwnProfile, supabase]);
 
-      const { url } = await response.json();
-      setProfile((prev) => ({ ...prev, photoUrl: url }));
-    } catch (err) {
-      console.error("Error uploading photo:", err);
-      setPhotoError(
-        err instanceof Error ? err.message : "Failed to upload photo"
-      );
-    } finally {
-      setUploadingPhoto(false);
+  useEffect(() => {
+    if (isMentor && initialProfile?.username) {
+      const parts = initialProfile.username.split(" ");
+      setFormData((prev) => ({
+        ...prev,
+        firstName: parts[0] || "",
+        lastName: parts.slice(1).join(" ") || "",
+        profession: initialProfile.program || "",
+      }));
     }
-  }
+  }, [isMentor, initialProfile]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-    setSaving(true);
-    setError("");
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      if (!profile.username) throw new Error("Username is required");
-      if (userTypes.includes("student") && !profile.program)
-        throw new Error("Program is required for students");
-      if (!profile.yearStanding) throw new Error("Year standing is required");
-      if (!profile.skills) throw new Error("Skills are required");
-      if (userTypes.length === 0)
-        throw new Error("Please select at least one user type");
-
-      const updates = {
-        user_id: user.id,
-        username: profile.username,
-        program: profile.program,
-        year_standing: profile.yearStanding,
-        chat_link: profile.chatLink || null,
-        photo_url: profile.photoUrl || null,
-        skills: profile.skills,
-        mentorship_link: profile.mentorshipLink || null,
-        mentorship_price: profile.mentorshipPrice || null,
-        user_type: userTypes,
-        updated_at: new Date().toISOString(),
+      const updateData: {
+        bio: string;
+        skills: string;
+        photo_url: string;
+        username?: string;
+        program?: string;
+        headline?: string;
+      } = {
+        bio: formData.bio,
+        skills: formData.skills,
+        photo_url: formData.photo_url,
       };
 
-      const { error } = await supabase.from("profiles").upsert(updates);
+      if (isOrganization) {
+        updateData.username = formData.username;
+        updateData.program = formData.program;
+      } else if (isMentor) {
+        updateData.username =
+          `${formData.firstName} ${formData.lastName}`.trim();
+        updateData.program = formData.profession;
+      }
 
-      if (error) throw error;
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update(updateData)
+        .eq("user_id", initialProfile?.user_id);
 
-      setShowSaveModal(true);
+      if (updateError) throw updateError;
+
+      setSuccess("Profile updated successfully!");
+      setIsEditing(false);
       router.refresh();
     } catch (err) {
-      console.error("Error saving profile:", err);
-      setError(err instanceof Error ? err.message : "Failed to save profile");
+      setError(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
-  }
+  };
 
-  function handleUserTypeChange(type: "student" | "company") {
-    setUserTypes((prev) => {
-      if (prev.includes(type)) {
-        return prev.filter((t) => t !== type);
-      } else {
-        return [...prev, type];
-      }
-    });
-  }
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    alert("Photo upload - integrate with Supabase Storage");
+  };
 
-  // Read-only view for other users' profiles
-  if (!isOwnProfile && initialProfile) {
-    return (
-      <div className="max-w-7xl mx-auto">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">
-            {initialProfile.username}&apos;s Profile
-          </h1>
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <div className="p-6">
+        <Link
+          href="/browse"
+          className="inline-flex items-center gap-2 text-white hover:text-guidr-green transition-colors"
+        >
+          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+            <svg
+              className="w-4 h-4 text-black"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </div>
+          <span className="font-semibold">BACK TO DASHBOARD</span>
+        </Link>
+      </div>
 
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex justify-center mb-6">
-              <div className="w-32 h-32 rounded-full bg-gray-200 overflow-hidden">
-                {initialProfile.photoUrl ? (
-                  <img
-                    src={initialProfile.photoUrl}
-                    alt={initialProfile.username}
-                    className="w-full h-full object-cover"
+      <div className="max-w-7xl mx-auto px-6 pb-12">
+        <h1 className="text-3xl font-bold mb-8">
+          {isOwnProfile
+            ? "My Profile"
+            : isOrganization
+            ? "Organization's Profile"
+            : "Mentor's Information"}
+        </h1>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg p-4 mb-6">
+              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
+                {formData.photo_url ? (
+                  <Image
+                    src={formData.photo_url}
+                    alt={formData.username}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-400">
-                    {initialProfile.username.charAt(0).toUpperCase()}
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-6xl font-bold">
+                    {isOrganization ? "ORG" : formData.firstName?.[0] || "U"}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Username
-                </label>
-                <p className="mt-1 text-gray-900">{initialProfile.username}</p>
-              </div>
-
-              {initialProfile.program && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Program
-                  </label>
-                  <p className="mt-1 text-gray-900">{initialProfile.program}</p>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Year Standing
-                </label>
-                <p className="mt-1 text-gray-900">
-                  {initialProfile.yearStanding}
+            {isOwnProfile && isEditing && (
+              <>
+                <button
+                  onClick={() =>
+                    document.getElementById("photo-upload")?.click()
+                  }
+                  className="w-full mb-4 px-4 py-3 rounded-lg font-semibold text-white flex items-center justify-center gap-2"
+                  style={{ backgroundColor: "#228C1D" }}
+                >
+                  Upload Photo
+                </button>
+                <p className="text-xs text-gray-400 mb-4">
+                  Upload a clear image or logo. Accepted: JPG, PNG. Max: 5MB.
                 </p>
+              </>
+            )}
+            <input
+              id="photo-upload"
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+            />
+
+            {isOwnProfile && !isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="w-full px-4 py-3 rounded-lg font-semibold text-white flex items-center justify-center gap-2"
+                style={{ backgroundColor: "#228C1D" }}
+              >
+                Edit Profile
+              </button>
+            )}
+
+            {!isOwnProfile && (
+              <div className="space-y-4">
+                <button
+                  className="w-full px-6 py-3 rounded-lg font-semibold text-white"
+                  style={{ backgroundColor: "#228C1D" }}
+                >
+                  Message
+                </button>
+                <button className="w-full px-6 py-3 rounded-lg font-semibold text-white border border-white">
+                  Save Profile
+                </button>
               </div>
+            )}
+          </div>
 
-              {initialProfile.chatLink && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Chat Link
-                  </label>
-                  <a
-                    href={initialProfile.chatLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 text-blue-600 hover:text-blue-800"
-                  >
-                    {initialProfile.chatLink}
-                  </a>
+          <div className="lg:col-span-2 space-y-6">
+            {isOwnProfile && isEditing && (
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="px-6 py-3 text-gray-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={loading}
+                  className="px-6 py-3 rounded-lg font-semibold text-white"
+                  style={{ backgroundColor: "#228C1D" }}
+                >
+                  {loading ? "Saving..." : "Save Update"}
+                </button>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-500">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="p-4 bg-green-500/10 border border-green-500 rounded-lg text-green-500">
+                {success}
+              </div>
+            )}
+
+            {isOwnProfile && (
+              <div className="bg-gray-900 rounded-lg p-6">
+                <h2 className="text-xl font-bold mb-4">Account Settings</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm mb-2">Email:</label>
+                    <input
+                      type="email"
+                      value={userEmail}
+                      disabled
+                      className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-gray-400"
+                    />
+                    {isEditing && (
+                      <button className="text-xs text-guidr-green mt-1">
+                        Edit email id
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-2">Password:</label>
+                    <input
+                      type="password"
+                      value="••••••••"
+                      disabled
+                      className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-gray-400"
+                    />
+                    {isEditing && (
+                      <button className="text-xs text-guidr-green mt-1">
+                        Update password id
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
-
-              {(initialProfile.mentorshipLink ||
-                initialProfile.mentorshipPrice) && (
-                <div className="border-t border-gray-200 pt-4">
-                  <h3 className="text-lg font-medium text-gray-900 flex items-center mb-2">
-                    <DollarSign className="w-5 h-5 mr-2" />
-                    MIC Details
-                  </h3>
-                  {initialProfile.mentorshipLink && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Inquiry Link
-                      </label>
-                      <a
-                        href={initialProfile.mentorshipLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 text-blue-600 hover:text-blue-800"
-                      >
-                        {initialProfile.mentorshipLink}
-                      </a>
+                {connectedProvider && (
+                  <div>
+                    <label className="block text-sm mb-2">
+                      Connected with:
+                    </label>
+                    <div className="flex items-center justify-between bg-black border border-gray-700 rounded-lg px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{userEmail}</span>
+                      </div>
+                      {isEditing && (
+                        <button className="px-4 py-2 rounded-lg bg-guidr-green text-white text-sm font-semibold">
+                          Disconnect
+                        </button>
+                      )}
                     </div>
-                  )}
-                  {initialProfile.mentorshipPrice && (
-                    <div className="mt-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Price
-                      </label>
-                      <p className="mt-1 text-gray-900">
-                        ₱{initialProfile.mentorshipPrice}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isOrganization && (
+              <>
+                <div className="bg-gray-900 rounded-lg p-6">
+                  <h2 className="text-xl font-bold mb-4">Organization Name</h2>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-white"
+                    />
+                  ) : (
+                    <>
+                      <h3 className="text-2xl font-bold mb-2">
+                        {initialProfile?.username}
+                      </h3>
+                      <p className="text-gray-400 text-sm">
+                        {initialProfile?.program}
                       </p>
-                    </div>
+                    </>
                   )}
                 </div>
-              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Skills & Interests
-                </label>
-                <p className="mt-1 text-gray-900 whitespace-pre-wrap">
-                  {initialProfile.skills}
-                </p>
-              </div>
-            </div>
+                {isEditing && (
+                  <div className="bg-gray-900 rounded-lg p-6">
+                    <label className="block text-sm font-semibold mb-2">
+                      Headline
+                    </label>
+                    <p className="text-xs text-gray-400 mb-2">
+                      Max 80 characters
+                    </p>
+                    <input
+                      type="text"
+                      name="headline"
+                      value={formData.headline}
+                      onChange={handleInputChange}
+                      maxLength={80}
+                      className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-white"
+                    />
+                  </div>
+                )}
+
+                <div className="bg-gray-900 rounded-lg p-6">
+                  <h2 className="text-xl font-bold mb-4">About / Bio</h2>
+                  {isEditing ? (
+                    <textarea
+                      name="bio"
+                      value={formData.bio}
+                      onChange={handleInputChange}
+                      rows={8}
+                      className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-white"
+                    />
+                  ) : (
+                    <p className="text-gray-300 whitespace-pre-wrap">
+                      {initialProfile?.bio || "No bio available"}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {isMentor && (
+              <>
+                <div className="bg-gray-900 rounded-lg p-6">
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm mb-2">
+                            First name
+                          </label>
+                          <input
+                            type="text"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm mb-2">
+                            Last name
+                          </label>
+                          <input
+                            type="text"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-2">
+                          Profession / Title
+                        </label>
+                        <input
+                          type="text"
+                          name="profession"
+                          value={formData.profession}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-white"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="text-2xl font-bold mb-1">
+                        {initialProfile?.username}
+                      </h3>
+                      <p className="text-gray-400 mb-4">
+                        {initialProfile?.program}
+                      </p>
+                      <div className="flex gap-4">
+                        <button className="px-4 py-2 bg-gray-800 rounded-lg text-sm">
+                          Mentorship
+                        </button>
+                        <button className="px-4 py-2 bg-gray-800 rounded-lg text-sm">
+                          Collaboration
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="bg-gray-900 rounded-lg p-6">
+                  <h2 className="text-xl font-bold mb-4">About / Bio</h2>
+                  {isEditing ? (
+                    <textarea
+                      name="bio"
+                      value={formData.bio}
+                      onChange={handleInputChange}
+                      rows={8}
+                      className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-white"
+                    />
+                  ) : (
+                    <p className="text-gray-300 whitespace-pre-wrap">
+                      {initialProfile?.bio || "No bio available"}
+                    </p>
+                  )}
+                </div>
+
+                {isEditing && (
+                  <div className="bg-gray-900 rounded-lg p-6">
+                    <h2 className="text-xl font-bold mb-4">
+                      Expertise / Interest
+                    </h2>
+                    <textarea
+                      name="skills"
+                      value={formData.skills}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Leadership, Strategy, Marketing"
+                      className="w-full px-4 py-2 rounded-lg bg-black border border-gray-700 text-white"
+                    />
+                  </div>
+                )}
+
+                {!isEditing && isMentor && (
+                  <div className="bg-gray-900 rounded-lg p-6">
+                    <h2 className="text-xl font-bold mb-4">Client Feedback</h2>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Feedback from organizations and clients
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-white rounded-lg"></div>
+                      <span className="text-sm">Org/Company Name</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // Editable view for own profile
-  return (
-    <div className="max-w-7xl mx-auto">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Your Profile</h1>
-
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6 bg-white rounded-lg shadow-lg p-6"
-        >
-          <div className="flex justify-center">
-            <div className="relative">
-              <div className="w-32 h-32 rounded-full bg-gray-200 overflow-hidden">
-                {uploadingPhoto ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
-                  </div>
-                ) : profile.photoUrl ? (
-                  <img
-                    src={profile.photoUrl}
-                    alt={profile.username}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-400">
-                    {profile.username?.charAt(0).toUpperCase() || "?"}
-                  </div>
-                )}
-              </div>
-              <div className="absolute bottom-0 right-0">
-                <label
-                  htmlFor="photoUrl"
-                  className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 text-white cursor-pointer hover:bg-green-700 transition-colors"
-                >
-                  <Camera size={16} />
-                </label>
-                <input
-                  type="file"
-                  id="photoUrl"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handlePhotoUpload(file);
-                    }
-                  }}
-                  className="hidden"
-                />
-              </div>
-            </div>
-          </div>
-
-          {photoError && (
-            <div className="text-red-600 text-sm text-center">{photoError}</div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              I am a: (select all that apply)
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={userTypes.includes("student")}
-                  onChange={() => handleUserTypeChange("student")}
-                  className="rounded border-gray-300 text-green-600 focus:ring-green-500 h-4 w-4"
-                />
-                <span className="ml-2">Student</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={userTypes.includes("company")}
-                  onChange={() => handleUserTypeChange("company")}
-                  className="rounded border-gray-300 text-green-600 focus:ring-green-500 h-4 w-4"
-                />
-                <span className="ml-2">Company</span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Username
-            </label>
-            <input
-              type="text"
-              id="username"
-              maxLength={20}
-              required
-              value={profile.username || ""}
-              onChange={(e) =>
-                setProfile((prev) => ({ ...prev, username: e.target.value }))
-              }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-              placeholder="Choose a username"
-            />
-          </div>
-
-          {userTypes.includes("student") && (
-            <div>
-              <label
-                htmlFor="program"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Program
-              </label>
-              <input
-                type="text"
-                id="program"
-                required
-                value={profile.program || ""}
-                onChange={(e) =>
-                  setProfile((prev) => ({ ...prev, program: e.target.value }))
-                }
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                placeholder="e.g., BS Computer Science"
-              />
-            </div>
-          )}
-
-          <div>
-            <label
-              htmlFor="yearStanding"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Year Standing
-            </label>
-            <select
-              id="yearStanding"
-              required
-              value={profile.yearStanding || ""}
-              onChange={(e) =>
-                setProfile((prev) => ({
-                  ...prev,
-                  yearStanding: e.target.value,
-                }))
-              }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-            >
-              <option value="">Select year</option>
-              <option value="1st Year">1st Year</option>
-              <option value="2nd Year">2nd Year</option>
-              <option value="3rd Year">3rd Year</option>
-              <option value="4th Year">4th Year</option>
-              <option value="Graduate">Graduate</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="chatLink"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Chat Link
-            </label>
-            <input
-              type="url"
-              id="chatLink"
-              value={profile.chatLink || ""}
-              onChange={(e) =>
-                setProfile((prev) => ({ ...prev, chatLink: e.target.value }))
-              }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-              placeholder="https://..."
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              Add a link to your preferred chat platform (Discord, LinkedIn,
-              etc.)
-            </p>
-          </div>
-
-          <div className="space-y-4 border-t border-gray-200 pt-4">
-            <h3 className="text-lg font-medium text-gray-900 flex items-center">
-              <DollarSign className="w-5 h-5 mr-2" />
-              MIC Details
-            </h3>
-
-            <div>
-              <label
-                htmlFor="mentorshipLink"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Inquiry Link
-              </label>
-              <input
-                type="url"
-                id="mentorshipLink"
-                value={profile.mentorshipLink || ""}
-                onChange={(e) =>
-                  setProfile((prev) => ({
-                    ...prev,
-                    mentorshipLink: e.target.value,
-                  }))
-                }
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                placeholder="https://calendly.com/your-link"
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Add your Calendly or booking system link where students can
-                schedule sessions
-              </p>
-            </div>
-
-            <div>
-              <label
-                htmlFor="mentorshipPrice"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Price (PHP)
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">₱</span>
-                </div>
-                <input
-                  type="number"
-                  id="mentorshipPrice"
-                  min="0"
-                  step="0.01"
-                  value={profile.mentorshipPrice || ""}
-                  onChange={(e) =>
-                    setProfile((prev) => ({
-                      ...prev,
-                      mentorshipPrice: parseFloat(e.target.value),
-                    }))
-                  }
-                  className="block w-full pl-7 rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="skills"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Skills & Interests
-            </label>
-            <textarea
-              id="skills"
-              required
-              value={profile.skills || ""}
-              onChange={(e) =>
-                setProfile((prev) => ({ ...prev, skills: e.target.value }))
-              }
-              rows={6}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-              placeholder="Tell us about your skills, interests, and what you're passionate about!"
-            />
-          </div>
-
-          {error && <div className="text-red-600 text-sm">{error}</div>}
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 transition-colors"
-          >
-            {saving ? "Saving Changes..." : "Save Changes"}
-          </button>
-        </form>
-
-        <ProfileSaveModal
-          isOpen={showSaveModal}
-          onClose={() => setShowSaveModal(false)}
-        />
       </div>
     </div>
   );

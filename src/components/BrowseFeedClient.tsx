@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface Mentor {
   id: string;
@@ -190,12 +191,14 @@ export default function BrowseFeedClient({
             }
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden">
+            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden relative">
               {userProfile?.photo_url ? (
-                <img
+                <Image
                   src={userProfile.photo_url}
                   alt={userProfile.username}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
+                  sizes="48px"
                 />
               ) : (
                 <span className="text-gray-800 font-semibold">
@@ -323,14 +326,16 @@ export default function BrowseFeedClient({
               >
                 {/* Main Card */}
                 <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-transform hover:scale-105 cursor-pointer">
-                  <div className="aspect-[3/4] relative">
-                    <img
+                  <div className="aspect-3/4 relative">
+                    <Image
                       src={
                         mentor.photo_url ||
                         "https://via.placeholder.com/400x600?text=No+Photo"
                       }
                       alt={mentor.username}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4 text-white">

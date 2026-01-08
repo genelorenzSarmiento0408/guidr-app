@@ -11,6 +11,9 @@ export interface Profile {
   mentorshipLink?: string;
   mentorshipPrice?: number;
   userType: ("student" | "company")[];
+  bio?: string;
+  headline?: string;
+  collaborationLink?: string;
 }
 
 export interface Post {

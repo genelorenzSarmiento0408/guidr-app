@@ -31,17 +31,15 @@ export default async function ProfilePage({
     const profileData = profile
       ? {
           id: profile.id,
+          user_id: profile.user_id,
           username: profile.username,
           program: profile.program,
-          yearStanding: profile.year_standing,
-          chatLink: profile.chat_link,
-          photoUrl: profile.photo_url,
+          photo_url: profile.photo_url,
           skills: profile.skills,
-          userId: profile.user_id,
-          createdAt: profile.created_at,
-          mentorshipLink: profile.mentorship_link,
-          mentorshipPrice: profile.mentorship_price,
-          userType: profile.user_type || [],
+          user_type: profile.user_type || [],
+          bio: profile.bio,
+          year_standing: profile.year_standing,
+          chat_enabled: profile.chat_enabled,
         }
       : null;
 
@@ -63,17 +61,15 @@ export default async function ProfilePage({
 
   const profileData = {
     id: profile.id,
+    user_id: profile.user_id,
     username: profile.username,
     program: profile.program,
-    yearStanding: profile.year_standing,
-    chatLink: profile.chat_link,
-    photoUrl: profile.photo_url,
+    photo_url: profile.photo_url,
     skills: profile.skills,
-    userId: profile.user_id,
-    createdAt: profile.created_at,
-    mentorshipLink: profile.mentorship_link,
-    mentorshipPrice: profile.mentorship_price,
-    userType: profile.user_type || [],
+    user_type: profile.user_type || [],
+    bio: profile.bio,
+    year_standing: profile.year_standing,
+    chat_enabled: profile.chat_enabled,
   };
 
   return (
