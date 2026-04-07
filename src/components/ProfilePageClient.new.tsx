@@ -203,7 +203,7 @@ export default function ProfilePageClient({
     name?: string;
     type?: string;
     value?: string;
-    onChange?: React.ChangeEventHandler<HTMLInputElement>;
+    onChange?: any;
     placeholder?: string;
     disabled?: boolean;
   }) => (

@@ -5,8 +5,9 @@ import ProfilePageClient from "@/components/ProfilePageClient";
 export default async function ProfilePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const supabase = await createClient();
 
   const {
@@ -18,7 +19,7 @@ export default async function ProfilePage({
   }
 
   // Check if viewing own profile
-  const isOwnProfile = user.id === params.id;
+  const isOwnProfile = user.id === id;
 
   if (isOwnProfile) {
     // Fetch own profile for editing
@@ -52,7 +53,7 @@ export default async function ProfilePage({
   const { data: profile, error } = await supabase
     .from("profiles")
     .select("*")
-    .eq("user_id", params.id)
+    .eq("user_id", id)
     .single();
 
   if (error || !profile) {
