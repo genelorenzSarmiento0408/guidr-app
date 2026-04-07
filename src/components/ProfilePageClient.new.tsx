@@ -395,7 +395,9 @@ export default function ProfilePageClient({
             {/* Account Settings */}
             {isOwnProfile && (
               <Card>
-                <h2 className="text-white text-2xl mb-8">Account Settings</h2>
+                <h2 className="text-white text-2xl mb-8 font-bold">
+                  Account Settings
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                   <div>
                     <InputField

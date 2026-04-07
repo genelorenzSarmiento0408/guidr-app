@@ -31,6 +31,7 @@ export default function ProfilePageClient({
   const router = useRouter();
   const supabase = createClient();
 
+  const [menuOpen, setMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,17 +54,36 @@ export default function ProfilePageClient({
   const [connectedProvider, setConnectedProvider] = useState<string | null>(
     null,
   );
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<{
+    username: string;
+    photo_url?: string;
+  } | null>(null);
 
   const isOrganization = initialProfile?.user_type?.includes("company");
   const isMentor = initialProfile?.user_type?.includes("student");
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (isOwnProfile) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        setCurrentUserId(user.id);
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+        if (profileData) {
+          setCurrentUserProfile({
+            username: profileData.username,
+            photo_url: profileData.photo_url,
+          });
+        }
+
+        if (isOwnProfile) {
           setUserEmail(user.email || "");
           const providers = user.app_metadata?.providers || [];
           if (providers.includes("google")) {
@@ -208,7 +228,7 @@ export default function ProfilePageClient({
     disabled?: boolean;
   }) => (
     <div className="flex flex-col gap-2 mb-6">
-      <label className="text-white font-['Arimo'] text-sm tracking-wide font-bold">
+      <label className="text-white font-['Inter',sans-serif] text-sm tracking-wide font-bold">
         {label}
       </label>
       <input
@@ -218,21 +238,92 @@ export default function ProfilePageClient({
         onChange={onChange}
         disabled={disabled}
         placeholder={placeholder}
-        className={`bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo'] focus:outline-none focus:border-[#228C1D] ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+        className={`bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Inter',sans-serif] focus:outline-none focus:border-[#228C1D] ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#060806] font-['League_Spartan',sans-serif] pb-24">
-      {/* Header logic similar to BrowseFeed is expected to be wrapped by layout or added here. Assuming Navigation exists */}
+    <div className="min-h-screen flex flex-col bg-[#060806] font-['Inter',sans-serif] w-full relative">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-20 px-6 h-20 flex items-center justify-between bg-transparent pointer-events-auto">
+        {/* Left: Menu Button */}
+        <button
+          onClick={() => {
+            setMenuOpen(!menuOpen);
+            window.dispatchEvent(new Event("toggleMenu"));
+          }}
+          className="flex items-center gap-3 text-white hover:opacity-80 transition-opacity"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+          <span className="text-sm font-['Inter',sans-serif] font-bold">
+            MENU
+          </span>
+        </button>
+
+        {/* Center: Logo and Tagline */}
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-['Inter',sans-serif] font-bold text-[#228C1D]">
+            GUIDR
+          </h1>
+          <span className="text-white text-sm font-['Inter',sans-serif]">
+            | Guided By Purpose. Driven By People
+          </span>
+        </div>
+
+        {/* Right: Messages and Profile */}
+        <div className="flex items-center gap-6 font-['Inter',sans-serif]">
+          <button
+            onClick={() => router.push("/messages")}
+            className="text-white text-sm font-bold hover:text-[#228c1d] transition-colors"
+          >
+            Messages
+          </button>
+          <button
+            onClick={() =>
+              currentUserId && router.push(`/profile/${currentUserId}`)
+            }
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
+            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden relative">
+              {currentUserProfile?.photo_url ? (
+                <Image
+                  src={currentUserProfile.photo_url}
+                  alt="Profile"
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <span className="text-[#0d110d] font-bold">
+                  {currentUserProfile?.username?.charAt(0).toUpperCase() || "?"}
+                </span>
+              )}
+            </div>
+            <span className="text-white font-bold text-sm">
+              {currentUserProfile?.username || "Profile"}
+            </span>
+          </button>
+        </div>
+      </header>
 
       {/* Main Content Area */}
-      <main className="max-w-[1512px] mx-auto px-8 pt-32 w-full flex flex-col items-start gap-8">
+      <main className="max-w-[1512px] mx-auto px-8 pt-32 pb-12 w-full flex flex-col items-start gap-8 flex-1">
         {/* Back Link */}
         <Link
           href="/browse"
-          className="flex items-center text-white gap-3 font-['Arimo'] text-sm uppercase tracking-wider hover:text-gray-300 transition-colors shrink-0"
+          className="flex items-center text-white gap-3 font-['Inter',sans-serif] text-sm uppercase tracking-wider hover:text-gray-300 transition-colors shrink-0"
         >
           <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -260,7 +351,7 @@ export default function ProfilePageClient({
             <button
               onClick={handleSaveProfile}
               disabled={loading}
-              className="bg-[#228c1d] hover:bg-[#1d7518] text-white px-8 py-3 rounded-full font-['Arimo'] text-sm font-bold tracking-wide transition-colors uppercase disabled:opacity-50"
+              className="bg-[#228c1d] hover:bg-[#1d7518] text-white px-8 py-3 rounded-full font-['Inter',sans-serif] text-sm font-bold tracking-wide transition-colors uppercase disabled:opacity-50"
             >
               {loading ? "Saving..." : "Save Update"}
             </button>
@@ -322,7 +413,7 @@ export default function ProfilePageClient({
                       document.getElementById("photo-upload")?.click()
                     }
                     disabled={uploadingPhoto}
-                    className="w-full bg-[#228c1d] hover:bg-[#1d7518] text-white px-6 py-4 rounded-full font-['Arimo'] text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    className="w-full bg-[#228c1d] hover:bg-[#1d7518] text-white px-6 py-4 rounded-full font-['Inter',sans-serif] text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                   >
                     {uploadingPhoto ? "Uploading..." : "Upload Photo"}
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -335,7 +426,7 @@ export default function ProfilePageClient({
                       />
                     </svg>
                   </button>
-                  <p className="text-gray-400 text-xs font-['Arimo'] leading-relaxed">
+                  <p className="text-gray-400 text-xs font-['Inter',sans-serif] leading-relaxed">
                     Upload a clear image or logo to represent your organization.
                     Accepted file types: JPG or PNG. Maximum file size: 5MB.
                   </p>
@@ -343,7 +434,7 @@ export default function ProfilePageClient({
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="w-full bg-[#228c1d] hover:bg-[#1d7518] text-white px-6 py-4 rounded-full font-['Arimo'] text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                  className="w-full bg-[#228c1d] hover:bg-[#1d7518] text-white px-6 py-4 rounded-full font-['Inter',sans-serif] text-sm font-bold flex items-center justify-center gap-2 transition-colors"
                 >
                   Edit Profile
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -361,7 +452,7 @@ export default function ProfilePageClient({
               <div className="flex gap-4">
                 <Link
                   href={`/messages?user=${initialProfile?.user_id}`}
-                  className="flex-1 bg-[#228c1d] hover:bg-[#1d7518] text-white px-6 py-4 rounded-full font-['Arimo'] text-sm font-bold flex justify-center items-center gap-2 transition-colors"
+                  className="flex-1 bg-[#228c1d] hover:bg-[#1d7518] text-white px-6 py-4 rounded-full font-['Inter',sans-serif] text-sm font-bold flex justify-center items-center gap-2 transition-colors"
                 >
                   Message
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -374,7 +465,7 @@ export default function ProfilePageClient({
                     />
                   </svg>
                 </Link>
-                <button className="flex-1 border border-white hover:bg-white/10 text-white px-6 py-4 rounded-full font-['Arimo'] text-sm font-bold flex justify-center items-center gap-2 transition-colors">
+                <button className="flex-1 border border-white hover:bg-white/10 text-white px-6 py-4 rounded-full font-['Inter',sans-serif] text-sm font-bold flex justify-center items-center gap-2 transition-colors">
                   Save Profile
                   <svg width="16" height="18" viewBox="0 0 24 24" fill="none">
                     <path
@@ -395,7 +486,9 @@ export default function ProfilePageClient({
             {/* Account Settings */}
             {isOwnProfile && (
               <Card>
-                <h2 className="text-white text-2xl mb-8">Account Settings</h2>
+                <h2 className="text-white text-2xl mb-8 font-bold">
+                  Account Settings
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                   <div>
                     <InputField
@@ -405,7 +498,7 @@ export default function ProfilePageClient({
                       disabled
                     />
                     {isEditing && (
-                      <div className="text-[#228c1d] text-xs font-['Arimo'] cursor-pointer ml-4 -mt-4 mb-4">
+                      <div className="text-[#228c1d] text-xs font-['Inter',sans-serif] cursor-pointer ml-4 -mt-4 mb-4">
                         Edit email ↗
                       </div>
                     )}
@@ -418,7 +511,7 @@ export default function ProfilePageClient({
                       disabled
                     />
                     {isEditing && (
-                      <div className="text-[#228c1d] text-xs font-['Arimo'] cursor-pointer ml-4 -mt-4 mb-4">
+                      <div className="text-[#228c1d] text-xs font-['Inter',sans-serif] cursor-pointer ml-4 -mt-4 mb-4">
                         Update password ↗
                       </div>
                     )}
@@ -427,7 +520,7 @@ export default function ProfilePageClient({
 
                 {connectedProvider && (
                   <div className="mt-4">
-                    <label className="text-white font-['Arimo'] text-sm font-bold block mb-4">
+                    <label className="text-white font-['Inter',sans-serif] text-sm font-bold block mb-4">
                       Connected with:
                     </label>
                     <div className="flex items-center justify-between">
@@ -438,12 +531,12 @@ export default function ProfilePageClient({
                             G
                           </span>
                         </div>
-                        <span className="text-gray-300 font-['Arimo'] text-sm">
+                        <span className="text-gray-300 font-['Inter',sans-serif] text-sm">
                           {userEmail}
                         </span>
                       </div>
                       {isEditing && (
-                        <button className="bg-[#228c1d] hover:bg-[#1d7518] text-white px-6 py-2 rounded-full font-['Arimo'] text-xs font-bold flex items-center gap-2">
+                        <button className="bg-[#228c1d] hover:bg-[#1d7518] text-white px-6 py-2 rounded-full font-['Inter',sans-serif] text-xs font-bold flex items-center gap-2">
                           Disconnect
                           <svg
                             width="14"
@@ -480,10 +573,10 @@ export default function ProfilePageClient({
                         onChange={handleInputChange}
                       />
                       <div className="flex flex-col gap-2 mb-6">
-                        <label className="text-white font-['Arimo'] text-sm font-bold">
+                        <label className="text-white font-['Inter',sans-serif] text-sm font-bold">
                           Headline
                         </label>
-                        <p className="text-gray-400 text-xs font-['Arimo'] mb-1">
+                        <p className="text-gray-400 text-xs font-['Inter',sans-serif] mb-1">
                           Add a short tagline that captures your
                           organization&apos;s mission or focus (max 80
                           characters).
@@ -494,7 +587,7 @@ export default function ProfilePageClient({
                           value={formData.program}
                           onChange={handleInputChange}
                           maxLength={80}
-                          className="bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo'] focus:outline-none focus:border-[#228c1d]"
+                          className="bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Inter',sans-serif] focus:outline-none focus:border-[#228c1d]"
                         />
                       </div>
                     </>
@@ -503,7 +596,7 @@ export default function ProfilePageClient({
                       <h2 className="text-white text-3xl font-normal mb-6">
                         {initialProfile?.username || "Organization Name"}
                       </h2>
-                      <p className="text-gray-300 text-sm font-['Arimo'] mb-4 leading-relaxed">
+                      <p className="text-gray-300 text-sm font-['Inter',sans-serif] mb-4 leading-relaxed">
                         {initialProfile?.program ||
                           "Organization's 80 characters headline placeholder."}
                       </p>
@@ -535,12 +628,12 @@ export default function ProfilePageClient({
                         onChange={handleInputChange}
                       />
                       <div className="flex flex-col gap-2 mb-6">
-                        <label className="text-white font-['Arimo'] text-sm font-bold mb-1">
+                        <label className="text-white font-['Inter',sans-serif] text-sm font-bold mb-1">
                           Headline
                         </label>
                         <input
                           type="text"
-                          className="bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo']"
+                          className="bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Inter',sans-serif]"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-8 mb-2">
@@ -553,14 +646,14 @@ export default function ProfilePageClient({
                       <h2 className="text-white text-3xl font-normal mb-2">
                         {initialProfile?.username || "Name Lastname"}
                       </h2>
-                      <p className="text-gray-400 text-sm font-['Arimo'] mb-8">
+                      <p className="text-gray-400 text-sm font-['Inter',sans-serif] mb-8">
                         {initialProfile?.program || "Profession / Title"}
                       </p>
-                      <p className="text-gray-300 text-sm font-['Arimo'] mb-8 leading-relaxed max-w-[80%]">
+                      <p className="text-gray-300 text-sm font-['Inter',sans-serif] mb-8 leading-relaxed max-w-[80%]">
                         Mentor&apos;s 80 characters headline. Lorem ipsum dolor
                         sit amet, consectetur adipiscing elit.
                       </p>
-                      <div className="flex gap-8 mb-2 text-sm font-['Arimo'] font-bold">
+                      <div className="flex gap-8 mb-2 text-sm font-['Inter',sans-serif] font-bold">
                         <a
                           href="#"
                           className="flex items-center gap-2 hover:text-[#228c1d] transition-colors"
@@ -620,11 +713,11 @@ export default function ProfilePageClient({
             <Card>
               {isEditing ? (
                 <div className="flex flex-col gap-2">
-                  <label className="text-white font-['Arimo'] text-md font-bold mb-2">
+                  <label className="text-white font-['Inter',sans-serif] text-md font-bold mb-2">
                     About / Bio
                   </label>
                   {isOrganization && (
-                    <p className="text-gray-400 text-xs font-['Arimo'] -mt-3 mb-2">
+                    <p className="text-gray-400 text-xs font-['Inter',sans-serif] -mt-3 mb-2">
                       Share a brief introduction about your organization and
                       what you stand for.
                     </p>
@@ -634,17 +727,17 @@ export default function ProfilePageClient({
                     value={formData.bio}
                     onChange={handleInputChange}
                     rows={6}
-                    className="w-full bg-transparent border border-white/20 rounded-3xl p-6 text-white font-['Arimo'] focus:outline-none focus:border-[#228c1d] resize-none"
+                    className="w-full bg-transparent border border-white/20 rounded-3xl p-6 text-white font-['Inter',sans-serif] focus:outline-none focus:border-[#228c1d] resize-none"
                   />
 
                   {isMentor && (
                     <>
-                      <label className="text-white font-['Arimo'] text-md font-bold mt-6 mb-2">
+                      <label className="text-white font-['Inter',sans-serif] text-md font-bold mt-6 mb-2">
                         Expertise / Interests:
                       </label>
                       <input
                         type="text"
-                        className="w-full bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo']"
+                        className="w-full bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Inter',sans-serif]"
                         placeholder="Add tags separated by comma"
                       />
                     </>
@@ -652,27 +745,27 @@ export default function ProfilePageClient({
                 </div>
               ) : (
                 <>
-                  <h2 className="text-white text-xl font-bold font-['Arimo'] mb-6">
+                  <h2 className="text-white text-xl font-bold font-['Inter',sans-serif] mb-6">
                     About / Bio
                   </h2>
-                  <p className="text-gray-300 text-sm font-['Arimo'] leading-relaxed whitespace-pre-wrap">
+                  <p className="text-gray-300 text-sm font-['Inter',sans-serif] leading-relaxed whitespace-pre-wrap">
                     {initialProfile?.bio ||
                       "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
                   </p>
 
                   {isMentor && (
                     <div className="mt-8">
-                      <h3 className="text-white text-sm font-bold font-['Arimo'] mb-4">
+                      <h3 className="text-white text-sm font-bold font-['Inter',sans-serif] mb-4">
                         Expertise / Interests:
                       </h3>
                       <div className="flex flex-wrap gap-3">
-                        <span className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Arimo'] outline outline-offset-2 outline-[#228c1d]">
+                        <span className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Inter',sans-serif] outline outline-offset-2 outline-[#228c1d]">
                           skill tag
                         </span>
-                        <span className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Arimo']">
+                        <span className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Inter',sans-serif]">
                           skill tag
                         </span>
-                        <span className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Arimo'] outline outline-offset-2 outline-[#228c1d]">
+                        <span className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Inter',sans-serif] outline outline-offset-2 outline-[#228c1d]">
                           skill tag
                         </span>
                       </div>
@@ -686,7 +779,7 @@ export default function ProfilePageClient({
             {!isEditing && isMentor && (
               <Card className="bg-transparent border-none p-0 px-2 mt-4 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-white text-xl font-bold font-['Arimo']">
+                  <h2 className="text-white text-xl font-bold font-['Inter',sans-serif]">
                     Client Feedback
                   </h2>
                   <div className="flex gap-2">
@@ -699,13 +792,13 @@ export default function ProfilePageClient({
                   </div>
                 </div>
                 <div className="mt-4 border-l-2 pl-4 border-[#228c1d] pb-8">
-                  <p className="text-gray-300 text-sm font-['Arimo'] italic leading-relaxed mb-4">
+                  <p className="text-gray-300 text-sm font-['Inter',sans-serif] italic leading-relaxed mb-4">
                     &quot;Lorem ipsum dolor sit amet, consectetur adipiscing
                     elit, sed do eiusmod tempor incididunt ut labore et dolore
                     magna aliqua. Ut enim ad minim veniam, quis nostrud
                     exercitation ullamco laboris...&quot;
                   </p>
-                  <button className="text-white text-xs font-bold font-['Arimo'] flex items-center gap-2 hover:text-[#228c1d]">
+                  <button className="text-white text-xs font-bold font-['Inter',sans-serif] flex items-center gap-2 hover:text-[#228c1d]">
                     ⊕ Read More
                   </button>
 
@@ -713,7 +806,7 @@ export default function ProfilePageClient({
                     <div className="w-12 h-12 bg-white rounded-lg p-2">
                       <div className="w-full h-full bg-linear-to-tr from-green-400 to-blue-500" />
                     </div>
-                    <span className="text-white font-['Arimo'] text-lg">
+                    <span className="text-white font-['Inter',sans-serif] text-lg">
                       Org/Company/NGO Name
                     </span>
                   </div>
@@ -723,6 +816,46 @@ export default function ProfilePageClient({
           </div>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer
+        className="w-full py-12 px-8 mt-auto shrink-0 border-t-2 border-[#20401d]"
+        style={{
+          background:
+            "radial-gradient(ellipse at bottom, #273D20 0%, #173715 100%)",
+        }}
+      >
+        <div className="max-w-7xl mx-auto flex flex-col items-center gap-8">
+          <h2 className="text-4xl font-bold font-['Inter',sans-serif] text-white tracking-widest">
+            GUIDR
+          </h2>
+
+          <div className="flex justify-center gap-8 text-white/80 text-sm font-['Inter',sans-serif]">
+            <Link
+              href="/support"
+              className="hover:text-[#228C1D] transition-colors"
+            >
+              Support
+            </Link>
+            <Link
+              href="/terms"
+              className="hover:text-[#228C1D] transition-colors"
+            >
+              Terms of Service
+            </Link>
+            <Link
+              href="/privacy"
+              className="hover:text-[#228C1D] transition-colors"
+            >
+              Privacy Policy
+            </Link>
+          </div>
+
+          <div className="text-white/60 text-sm font-['Inter',sans-serif]">
+            Copyright © 2026 GUIDR®. All Rights Reserved
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
