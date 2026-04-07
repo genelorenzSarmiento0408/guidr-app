@@ -368,3 +368,38 @@ If you encounter issues not covered in this guide:
 4. Ensure you're using the latest version of dependencies
 
 For project-specific questions, refer to the main `README.md` or open an issue in the repository.
+
+---
+
+## Local Development & Project Setup
+
+To run this Next.js project locally after cloning:
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+
+### 2. TypeScript Configuration for Supabase
+If you are writing Supabase Edge Functions (which use Deno) in the same repository, ensure that the Next.js compiler ignores them so that build/dev scripts don't fail with Deno type errors.
+
+In your `tsconfig.json`:
+```json
+{
+  "exclude": ["node_modules", "supabase/functions/**/*"]
+}
+```
+
+### 3. Running the Server
+```bash
+# Start the development server on localhost:3000
+npm run dev
+```
+
+### 4. Production Build
+To verify that there are no remaining TypeScript or compiler errors:
+```bash
+# Check for TS errors and build Next.js optimized assets
+npm run build
+```
+
