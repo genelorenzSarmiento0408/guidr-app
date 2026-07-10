@@ -11,8 +11,8 @@ export default function Navigation() {
   const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -22,12 +22,11 @@ export default function Navigation() {
       setUser(user);
 
       if (user) {
-        const { data: profileData } = await supabase
+        await supabase
           .from("profiles")
-          .select("*")
+          .select("id")
           .eq("user_id", user.id)
           .single();
-        setProfile(profileData);
       }
     };
 
@@ -44,6 +43,44 @@ export default function Navigation() {
     };
   }, [supabase]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let lastPingAt = 0;
+    const updateLastActive = async (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastPingAt < 60_000) return;
+      if (!force && document.visibilityState !== "visible") return;
+
+      lastPingAt = now;
+      await supabase
+        .from("profiles")
+        .update({ last_active: new Date().toISOString() })
+        .eq("user_id", user.id);
+    };
+
+    updateLastActive(true);
+
+    const intervalId = window.setInterval(() => {
+      updateLastActive(false);
+    }, 60_000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        updateLastActive(true);
+      }
+    };
+
+    window.addEventListener("focus", handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleVisibility);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [supabase, user?.id]);
+
   // Separate effect for menu toggle event listener
   useEffect(() => {
     const handleMenuToggle = () => {
@@ -57,8 +94,10 @@ export default function Navigation() {
     };
   }, []);
 
-  const handleSignOut = async () => {
+  const confirmSignOut = async () => {
     await supabase.auth.signOut();
+    setShowLogoutConfirm(false);
+    setIsOpen(false);
     router.push("/");
     router.refresh();
   };
@@ -71,6 +110,35 @@ export default function Navigation() {
           className="fixed inset-0 bg-black/50 z-30"
           onClick={() => setIsOpen(false)}
         />
+      )}
+
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowLogoutConfirm(false)}
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-[#228C1D]/30 bg-[#0A0D0A] p-6 text-white shadow-2xl">
+            <h2 className="text-xl font-bold">Log out of Guidr?</h2>
+            <p className="mt-2 text-sm text-white/70">
+              You can sign back in anytime with your account.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSignOut}
+                className="flex-1 rounded-full bg-[#228C1D] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1d7518]"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Sidebar - show when open, hide when not */}
@@ -127,7 +195,7 @@ export default function Navigation() {
 
           {/* Log Out Button */}
           <button
-            onClick={handleSignOut}
+            onClick={() => setShowLogoutConfirm(true)}
             className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-full bg-white text-guidr-dark hover:bg-gray-100 transition-colors mb-6"
           >
             <span className="font-semibold" style={{ color: "#228C1D" }}>

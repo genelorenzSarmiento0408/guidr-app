@@ -20,8 +20,29 @@ const leagueSpartan = League_Spartan({
 });
 
 export const metadata: Metadata = {
-  title: "Guidr - Guide Platform",
-  description: "Connect with guides and create posts",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  ),
+  title: {
+    default: "Guidr - Guide Platform",
+    template: "%s | Guidr",
+  },
+  description:
+    "Guidr helps students and organizations discover opportunities, connect, and collaborate with purpose.",
+  openGraph: {
+    title: "Guidr - Guide Platform",
+    description:
+      "Discover internships, mentorships, and collaboration opportunities on Guidr.",
+    type: "website",
+    siteName: "Guidr",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Guidr - Guide Platform",
+    description:
+      "Discover internships, mentorships, and collaboration opportunities on Guidr.",
+  },
 };
 
 export default function RootLayout({

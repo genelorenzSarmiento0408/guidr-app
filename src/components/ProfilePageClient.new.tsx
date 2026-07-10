@@ -14,6 +14,9 @@ interface Profile {
   photo_url?: string;
   bio?: string;
   skills?: string;
+  headline?: string;
+  mentorship_link?: string;
+  collaboration_link?: string;
   user_type: string[];
   year_standing?: string;
   chat_enabled?: boolean;
@@ -43,9 +46,12 @@ export default function ProfilePageClient({
     photo_url: initialProfile?.photo_url || "",
     bio: initialProfile?.bio || "",
     skills: initialProfile?.skills || "",
+    headline: initialProfile?.headline || "",
+    mentorship_link: initialProfile?.mentorship_link || "",
+    collaboration_link: initialProfile?.collaboration_link || "",
+    year_standing: initialProfile?.year_standing || "",
     firstName: "",
     lastName: "",
-    headline: "",
     profession: "",
   });
 
@@ -83,15 +89,34 @@ export default function ProfilePageClient({
         firstName: parts[0] || "",
         lastName: parts.slice(1).join(" ") || "",
         profession: initialProfile.program || "",
+        year_standing: initialProfile.year_standing || "",
       }));
     }
   }, [isMentor, initialProfile]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const skillTags = formData.skills
+    .split(",")
+    .map((skill) => skill.trim())
+    .filter(Boolean);
+
+  const removeSkillTag = (tagToRemove: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      skills: prev.skills
+        .split(",")
+        .map((skill) => skill.trim())
+        .filter((skill) => skill && skill !== tagToRemove)
+        .join(", "),
+    }));
   };
 
   const handleSaveProfile = async () => {
@@ -104,18 +129,25 @@ export default function ProfilePageClient({
         bio: string;
         skills: string;
         photo_url: string;
+        headline: string;
+        mentorship_link: string;
+        collaboration_link: string;
+        year_standing: string;
         username?: string;
         program?: string;
-        headline?: string;
       } = {
         bio: formData.bio,
         skills: formData.skills,
         photo_url: formData.photo_url,
+        headline: formData.headline,
+        mentorship_link: formData.mentorship_link,
+        collaboration_link: formData.collaboration_link,
+        year_standing: formData.year_standing,
       };
 
       if (isOrganization) {
         updateData.username = formData.username;
-        updateData.program = formData.program; // storing headline in program for now or using headline field if it exists
+        updateData.program = formData.program;
       } else if (isMentor) {
         updateData.username =
           `${formData.firstName} ${formData.lastName}`.trim();
@@ -203,7 +235,7 @@ export default function ProfilePageClient({
     name?: string;
     type?: string;
     value?: string;
-    onChange?: any;
+    onChange?: React.ChangeEventHandler<HTMLInputElement>;
     placeholder?: string;
     disabled?: boolean;
   }) => (
@@ -282,7 +314,7 @@ export default function ProfilePageClient({
           {/* Left Column - Photo & Edit Button */}
           <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6">
             <div
-              className={`w-full aspect-[4/5] bg-white rounded-2xl overflow-hidden relative shrink-0 ${isOrganization ? "aspect-square p-4 bg-white flex items-center justify-center" : ""}`}
+              className={`w-full aspect-4/5 bg-white rounded-2xl overflow-hidden relative shrink-0 ${isOrganization ? "aspect-square p-4 bg-white flex items-center justify-center" : ""}`}
             >
               {formData.photo_url ? (
                 isOrganization ? (
@@ -430,15 +462,12 @@ export default function ProfilePageClient({
                 {connectedProvider && (
                   <div className="mt-4">
                     <label className="text-white font-['Arimo'] text-sm font-bold block mb-4">
-                      Connected with:
+                      Connected Provider:
                     </label>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        {/* Fake Google Logo Icon */}
-                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center p-1">
-                          <span className="text-black font-bold text-xs">
-                            G
-                          </span>
+                        <div className="rounded-full border border-[#228c1d]/50 bg-[#228c1d]/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#84e07e]">
+                          {connectedProvider}
                         </div>
                         <span className="text-gray-300 font-['Arimo'] text-sm">
                           {userEmail}
@@ -490,15 +519,23 @@ export default function ProfilePageClient({
                           organization&apos;s mission or focus (max 80
                           characters).
                         </p>
-                        <input
-                          type="text"
-                          name="program" // Utilizing program for headline for simplicity based on DB schema
-                          value={formData.program}
+                        <textarea
+                          name="headline"
+                          value={formData.headline}
                           onChange={handleInputChange}
-                          maxLength={80}
-                          className="bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo'] focus:outline-none focus:border-[#228c1d]"
+                          maxLength={200}
+                          rows={3}
+                          className="bg-transparent border border-white/20 rounded-3xl px-6 py-3 text-white font-['Arimo'] focus:outline-none focus:border-[#228c1d] resize-none"
+                          placeholder="Describe your mission, focus, or latest hiring need"
                         />
                       </div>
+                      <InputField
+                        label="Website / Collaboration Link"
+                        name="collaboration_link"
+                        value={formData.collaboration_link}
+                        onChange={handleInputChange}
+                        placeholder="https://..."
+                      />
                     </>
                   ) : (
                     <>
@@ -506,9 +543,20 @@ export default function ProfilePageClient({
                         {initialProfile?.username || "Organization Name"}
                       </h2>
                       <p className="text-gray-300 text-sm font-['Arimo'] mb-4 leading-relaxed">
-                        {initialProfile?.program ||
-                          "Organization's 80 characters headline placeholder."}
+                        {initialProfile?.headline ||
+                          initialProfile?.program ||
+                          "No headline added yet."}
                       </p>
+                      {initialProfile?.collaboration_link && (
+                        <a
+                          href={initialProfile.collaboration_link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 text-sm font-['Arimo'] font-bold text-white hover:text-[#228c1d] transition-colors"
+                        >
+                          Website / Collaboration Link
+                        </a>
+                      )}
                     </>
                   )}
                 </>
@@ -538,79 +586,91 @@ export default function ProfilePageClient({
                       />
                       <div className="flex flex-col gap-2 mb-6">
                         <label className="text-white font-['Arimo'] text-sm font-bold mb-1">
+                          Year Standing
+                        </label>
+                        <select
+                          name="year_standing"
+                          value={formData.year_standing}
+                          onChange={handleInputChange}
+                          className="bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo']"
+                        >
+                          <option value="">Select year standing</option>
+                          <option value="Mentor">Mentor</option>
+                          <option value="First Year">First Year</option>
+                          <option value="Second Year">Second Year</option>
+                          <option value="Third Year">Third Year</option>
+                          <option value="Fourth Year">Fourth Year</option>
+                          <option value="Graduate">Graduate</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-2 mb-6">
+                        <label className="text-white font-['Arimo'] text-sm font-bold mb-1">
                           Headline
                         </label>
-                        <input
-                          type="text"
-                          className="bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo']"
+                        <textarea
+                          name="headline"
+                          value={formData.headline}
+                          onChange={handleInputChange}
+                          rows={3}
+                          maxLength={200}
+                          placeholder="Add a short summary of your experience, interests, or goals"
+                          className="bg-transparent border border-white/20 rounded-3xl px-6 py-3 text-white font-['Arimo'] resize-none"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-8 mb-2">
-                        <InputField label="Mentorship Link" />
-                        <InputField label="Collaboration Link" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-2">
+                        <InputField
+                          label="Mentorship Link"
+                          name="mentorship_link"
+                          value={formData.mentorship_link}
+                          onChange={handleInputChange}
+                          placeholder="https://..."
+                        />
+                        <InputField
+                          label="Collaboration Link"
+                          name="collaboration_link"
+                          value={formData.collaboration_link}
+                          onChange={handleInputChange}
+                          placeholder="https://..."
+                        />
                       </div>
                     </>
                   ) : (
                     <>
                       <h2 className="text-white text-3xl font-normal mb-2">
-                        {initialProfile?.username || "Name Lastname"}
+                        {initialProfile?.username || "Unnamed profile"}
                       </h2>
                       <p className="text-gray-400 text-sm font-['Arimo'] mb-8">
-                        {initialProfile?.program || "Profession / Title"}
+                        {initialProfile?.program || "No profession added yet."}
                       </p>
+                      {initialProfile?.year_standing && (
+                        <p className="text-gray-400 text-sm font-['Arimo'] mb-4">
+                          Year standing: {initialProfile.year_standing}
+                        </p>
+                      )}
                       <p className="text-gray-300 text-sm font-['Arimo'] mb-8 leading-relaxed max-w-[80%]">
-                        Mentor&apos;s 80 characters headline. Lorem ipsum dolor
-                        sit amet, consectetur adipiscing elit.
+                        {initialProfile?.headline || "No headline added yet."}
                       </p>
-                      <div className="flex gap-8 mb-2 text-sm font-['Arimo'] font-bold">
-                        <a
-                          href="#"
-                          className="flex items-center gap-2 hover:text-[#228c1d] transition-colors"
-                        >
-                          <svg width="16" height="16">
-                            <path
-                              d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"
-                              stroke="currentColor"
-                              fill="none"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
-                              stroke="currentColor"
-                              fill="none"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          Mentorship
-                        </a>
-                        <a
-                          href="#"
-                          className="flex items-center gap-2 hover:text-[#228c1d] transition-colors"
-                        >
-                          <svg width="16" height="16">
-                            <path
-                              d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"
-                              stroke="currentColor"
-                              fill="none"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
-                              stroke="currentColor"
-                              fill="none"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          Collaboration
-                        </a>
+                      <div className="flex gap-8 mb-2 text-sm font-['Arimo'] font-bold flex-wrap">
+                        {initialProfile?.mentorship_link && (
+                          <a
+                            href={initialProfile.mentorship_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 hover:text-[#228c1d] transition-colors"
+                          >
+                            Mentorship Link
+                          </a>
+                        )}
+                        {initialProfile?.collaboration_link && (
+                          <a
+                            href={initialProfile.collaboration_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 hover:text-[#228c1d] transition-colors"
+                          >
+                            Collaboration Link
+                          </a>
+                        )}
                       </div>
                     </>
                   )}
@@ -646,9 +706,26 @@ export default function ProfilePageClient({
                       </label>
                       <input
                         type="text"
+                        name="skills"
+                        value={formData.skills}
+                        onChange={handleInputChange}
                         className="w-full bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo']"
                         placeholder="Add tags separated by comma"
                       />
+                      {skillTags.length > 0 && (
+                        <div className="flex flex-wrap gap-3 mt-4">
+                          {skillTags.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => removeSkillTag(tag)}
+                              className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Arimo'] hover:bg-[#228c1d] hover:text-white transition-colors"
+                            >
+                              {tag} ×
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -658,8 +735,7 @@ export default function ProfilePageClient({
                     About / Bio
                   </h2>
                   <p className="text-gray-300 text-sm font-['Arimo'] leading-relaxed whitespace-pre-wrap">
-                    {initialProfile?.bio ||
-                      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
+                    {initialProfile?.bio || "No bio added yet."}
                   </p>
 
                   {isMentor && (
@@ -668,15 +744,26 @@ export default function ProfilePageClient({
                         Expertise / Interests:
                       </h3>
                       <div className="flex flex-wrap gap-3">
-                        <span className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Arimo'] outline outline-offset-2 outline-[#228c1d]">
-                          skill tag
-                        </span>
-                        <span className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Arimo']">
-                          skill tag
-                        </span>
-                        <span className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Arimo'] outline outline-offset-2 outline-[#228c1d]">
-                          skill tag
-                        </span>
+                        {(initialProfile?.skills || "")
+                          .split(",")
+                          .map((skill) => skill.trim())
+                          .filter(Boolean)
+                          .map((skill, index) => (
+                            <span
+                              key={`${skill}-${index}`}
+                              className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold font-['Arimo']"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        {!(initialProfile?.skills || "")
+                          .split(",")
+                          .map((skill) => skill.trim())
+                          .filter(Boolean).length && (
+                          <span className="text-gray-500 text-sm font-['Arimo']">
+                            No expertise tags added yet.
+                          </span>
+                        )}
                       </div>
                     </div>
                   )}
@@ -684,42 +771,14 @@ export default function ProfilePageClient({
               )}
             </Card>
 
-            {/* Client Feedback (Mentor Only, View Only) */}
             {!isEditing && isMentor && (
-              <Card className="bg-transparent border-none p-0 px-2 mt-4 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-white text-xl font-bold font-['Arimo']">
-                    Client Feedback
-                  </h2>
-                  <div className="flex gap-2">
-                    <button className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 cursor-not-allowed">
-                      ←
-                    </button>
-                    <button className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 text-black">
-                      →
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-4 border-l-2 pl-4 border-[#228c1d] pb-8">
-                  <p className="text-gray-300 text-sm font-['Arimo'] italic leading-relaxed mb-4">
-                    &quot;Lorem ipsum dolor sit amet, consectetur adipiscing
-                    elit, sed do eiusmod tempor incididunt ut labore et dolore
-                    magna aliqua. Ut enim ad minim veniam, quis nostrud
-                    exercitation ullamco laboris...&quot;
-                  </p>
-                  <button className="text-white text-xs font-bold font-['Arimo'] flex items-center gap-2 hover:text-[#228c1d]">
-                    ⊕ Read More
-                  </button>
-
-                  <div className="flex items-center gap-4 mt-8">
-                    <div className="w-12 h-12 bg-white rounded-lg p-2">
-                      <div className="w-full h-full bg-linear-to-tr from-green-400 to-blue-500" />
-                    </div>
-                    <span className="text-white font-['Arimo'] text-lg">
-                      Org/Company/NGO Name
-                    </span>
-                  </div>
-                </div>
+              <Card className="bg-[#0A0D0A] border border-white/5">
+                <h2 className="text-white text-xl font-bold font-['Arimo'] mb-3">
+                  Client Feedback
+                </h2>
+                <p className="text-gray-400 text-sm font-['Arimo']">
+                  No feedback entries yet.
+                </p>
               </Card>
             )}
           </div>

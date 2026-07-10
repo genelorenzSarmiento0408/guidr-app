@@ -12,6 +12,7 @@ import type { Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -100,7 +101,7 @@ export default function ProfileModal({
     } catch (error) {
       console.error("Error saving profile:", error);
       setError(
-        error instanceof Error ? error.message : "Failed to save profile"
+        error instanceof Error ? error.message : "Failed to save profile",
       );
     } finally {
       setSaving(false);
@@ -128,9 +129,11 @@ export default function ProfileModal({
         <div className="flex items-center mb-6">
           <div className="w-20 h-20 rounded-full bg-gray-200 shrink-0 overflow-hidden">
             {profile.photoUrl ? (
-              <img
+              <Image
                 src={profile.photoUrl}
                 alt={profile.username}
+                width={80}
+                height={80}
                 className="w-full h-full object-cover"
               />
             ) : (

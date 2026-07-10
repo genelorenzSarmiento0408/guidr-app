@@ -22,5 +22,8 @@ export interface Post {
   description: string;
   userId: string;
   createdAt: string;
+  projectType?: string;
+  status?: string;
+  requiredSkills?: string;
   profile: Profile;
 }
