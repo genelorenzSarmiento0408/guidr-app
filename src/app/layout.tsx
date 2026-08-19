@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, League_Spartan } from "next/font/google";
+import { Arimo, Geist, Geist_Mono, League_Spartan } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
+
+const arimo = Arimo({
+  variable: "--font-arimo",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,7 +59,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${leagueSpartan.variable} antialiased`}
+        className={`${arimo.variable} ${geistSans.variable} ${geistMono.variable} ${leagueSpartan.variable} antialiased`}
       >
         <Navigation />
         <main className="min-h-screen">{children}</main>

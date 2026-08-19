@@ -107,7 +107,7 @@ export default function Navigation() {
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30"
+          className="fixed inset-x-0 bottom-0 top-20 z-30 bg-[#1f271d]/90"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -143,27 +143,38 @@ export default function Navigation() {
 
       {/* Sidebar - show when open, hide when not */}
       <aside
-        className={`fixed top-0 left-0 h-full z-40 transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-full z-40 transition-transform duration-300 bg-black ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         } w-64`}
-        style={{ backgroundColor: "#162D10" }}
+        // style={{ backgroundColor: "#162D10" }}
       >
         <div className="flex flex-col h-full p-6">
           {/* Logo */}
-          <div className="mb-8 mt-12">
-            <h1
-              className="text-3xl font-spartan font-bold"
-              style={{ color: "#228C1D" }}
-            >
-              GUIDR
-            </h1>
-            <p className="text-sm text-guidr-light mt-1">
-              Guided By Purpose. Driven By People
-            </p>
-          </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 space-y-2">
+          <nav className="flex-1 space-y-8 ">
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                // window.dispatchEvent(new Event("toggleMenu"));
+              }}
+              className="flex items-center gap-3 text-white hover:opacity-80 transition-opacity"
+            >
+              <svg
+                width="29"
+                height="25"
+                viewBox="0 0 29 25"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M28.0437 2.05625L26.25 0L14.0219 10.5875L1.79375 0L0 2.05625L11.9438 12.4031L0 22.75L1.79375 24.8062L14.0219 14.2188L26.25 24.8062L28.0437 22.75L16.1 12.4031L28.0437 2.05625Z"
+                  fill="#F9F9F9"
+                />
+              </svg>
+
+              <span className="text-sm font-medium">CLOSE</span>
+            </button>
             <Link
               href="/browse"
               onClick={() => setIsOpen(false)}

@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import Navigation from "./Navigation";
+import TopNavbar from "./TopNavbar";
+import Footer from "./Footer";
 
 interface Message {
   id: string;
@@ -94,8 +94,6 @@ export default function MessagesClient({
   userProfile: { id: string; username: string; photo_url?: string };
 }) {
   const supabase = createClient();
-  const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
@@ -470,83 +468,10 @@ export default function MessagesClient({
 
   return (
     <div className="min-h-screen flex flex-col bg-[#060806] font-['Inter',sans-serif] w-full relative">
-      <Navigation />
-
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-20 px-6 h-20 flex items-center justify-between bg-transparent pointer-events-auto border-b border-[#173715]/20">
-        {/* Left: Menu Button */}
-        <button
-          onClick={() => {
-            setMenuOpen(!menuOpen);
-            window.dispatchEvent(new Event("toggleMenu"));
-          }}
-          className="flex items-center gap-3 text-white hover:opacity-80 transition-opacity"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-          <span className="text-sm font-['Inter',sans-serif] font-bold">
-            MENU
-          </span>
-        </button>
-
-        {/* Center: Logo and Tagline */}
-        <div className="flex items-center gap-3">
-          <Link
-            href="/browse"
-            className="text-3xl font-['Inter',sans-serif] font-bold text-[#228C1D]"
-          >
-            GUIDR
-          </Link>
-          <span className="text-white text-sm font-['Inter',sans-serif]">
-            | Guided By Purpose. Driven By People
-          </span>
-        </div>
-
-        {/* Right: Messages and Profile */}
-        <div className="flex items-center gap-6 font-['Inter',sans-serif]">
-          <button
-            onClick={() => router.push("/messages")}
-            className="text-[#228c1d] text-sm font-bold transition-colors"
-          >
-            Messages
-          </button>
-          <button
-            onClick={() =>
-              userProfile?.id && router.push(`/profile/${userProfile.id}`)
-            }
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-          >
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden relative">
-              {userProfile?.photo_url ? (
-                <Image
-                  src={userProfile.photo_url}
-                  alt="Profile"
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <span className="text-[#0d110d] font-bold">
-                  {userProfile?.username?.charAt(0).toUpperCase() || "?"}
-                </span>
-              )}
-            </div>
-            <span className="text-white font-bold text-sm">
-              {userProfile?.username || "Profile"}
-            </span>
-          </button>
-        </div>
-      </header>
+      <TopNavbar
+        currentUserId={userProfile?.id}
+        currentUserProfile={userProfile}
+      />
 
       <main className="pt-32 px-8 pb-12 w-full max-w-[1512px] flex-1 mx-auto flex gap-8">
         <aside className="w-1/4 min-w-[300px] flex flex-col gap-6 h-[calc(100vh-250px)] min-h-[500px]">
@@ -809,44 +734,7 @@ export default function MessagesClient({
       </main>
 
       {/* Footer */}
-      <footer
-        className="w-full py-12 px-8 mt-auto shrink-0 border-t-2 border-[#20401d]"
-        style={{
-          background:
-            "radial-gradient(ellipse at bottom, #273D20 0%, #173715 100%)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto flex flex-col items-center gap-8">
-          <h2 className="text-4xl font-bold font-['Inter',sans-serif] text-white tracking-widest">
-            GUIDR
-          </h2>
-
-          <div className="flex justify-center gap-8 text-white/80 text-sm font-['Inter',sans-serif]">
-            <Link
-              href="/support"
-              className="hover:text-[#228C1D] transition-colors"
-            >
-              Support
-            </Link>
-            <Link
-              href="/terms"
-              className="hover:text-[#228C1D] transition-colors"
-            >
-              Terms of Service
-            </Link>
-            <Link
-              href="/privacy"
-              className="hover:text-[#228C1D] transition-colors"
-            >
-              Privacy Policy
-            </Link>
-          </div>
-
-          <div className="text-white/60 text-sm font-['Inter',sans-serif]">
-            Copyright © 2026 GUIDR®. All Rights Reserved
-          </div>
-        </div>
-      </footer>
+      <Footer year={2025} />
     </div>
   );
 }

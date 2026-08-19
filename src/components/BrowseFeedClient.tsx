@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import TopNavbar from "./TopNavbar";
+import Footer from "./Footer";
 
 interface Mentor {
   id: string;
@@ -47,7 +49,6 @@ export default function BrowseFeedClient({
     username: string;
     photo_url?: string;
   } | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   // Fetch current user profile
   useEffect(() => {
@@ -135,101 +136,10 @@ export default function BrowseFeedClient({
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Top Header Bar */}
-      <header
-        className="fixed top-0 left-0 right-0 z-20 px-6 h-20 flex items-center justify-between"
-        style={{ backgroundColor: "#2A2A2A" }}
-      >
-        {/* Left: Menu Button */}
-        <button
-          onClick={() => {
-            setMenuOpen(!menuOpen);
-            window.dispatchEvent(new Event("toggleMenu"));
-          }}
-          className="flex items-center gap-3 text-white hover:opacity-80 transition-opacity"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-          <span className="text-sm font-medium">MENU</span>
-        </button>
-
-        {/* Center: Logo and Tagline */}
-        <div className="flex items-center gap-3">
-          <h1
-            className="text-3xl font-spartan font-bold"
-            style={{ color: "#228C1D" }}
-          >
-            GUIDR
-          </h1>
-          <span className="text-white text-sm">
-            | Guided By Purpose. Driven By People
-          </span>
-        </div>
-
-        {/* Right: Messages and Profile */}
-        <div className="flex items-center gap-6">
-          <button
-            onClick={() => router.push("/messages")}
-            className="text-white text-sm hover:opacity-80 transition-opacity"
-          >
-            Messages
-          </button>
-          <button
-            onClick={() =>
-              currentUserId && router.push(`/profile/${currentUserId}`)
-            }
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-          >
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden relative">
-              {userProfile?.photo_url ? (
-                <Image
-                  src={userProfile.photo_url}
-                  alt={userProfile.username}
-                  fill
-                  className="object-cover"
-                  sizes="48px"
-                />
-              ) : (
-                <span className="text-gray-800 font-semibold">
-                  {userProfile?.username?.[0]?.toUpperCase() || "U"}
-                </span>
-              )}
-            </div>
-            <div className="text-left">
-              <p className="text-white text-sm font-medium">
-                {userProfile?.username || "Org/Mentor Name"}
-              </p>
-              <p className="text-gray-400 text-xs flex items-center gap-1">
-                View profile
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                  />
-                </svg>
-              </p>
-            </div>
-          </button>
-        </div>
-      </header>
+      <TopNavbar
+        currentUserId={currentUserId}
+        currentUserProfile={userProfile}
+      />
 
       {/* Main Content with top padding */}
       <div className="pt-20">
@@ -425,49 +335,7 @@ export default function BrowseFeedClient({
         </div>
 
         {/* Footer Section */}
-        <footer
-          className="py-12 px-4 sm:px-6 lg:px-8 border-t border-gray-800"
-          style={{ backgroundColor: "#3A3A3A" }}
-        >
-          <div className="max-w-7xl mx-auto">
-            {/* Logo */}
-            <div className="text-center mb-6">
-              <h2
-                className="text-3xl font-spartan font-bold"
-                style={{ color: "#FFFFFF" }}
-              >
-                GUIDR
-              </h2>
-            </div>
-
-            {/* Links */}
-            <div className="flex justify-center gap-8 mb-6 text-white text-sm">
-              <a
-                href="/support"
-                className="hover:text-guidr-green transition-colors"
-              >
-                Support
-              </a>
-              <a
-                href="/terms"
-                className="hover:text-guidr-green transition-colors"
-              >
-                Terms of Service
-              </a>
-              <a
-                href="/privacy"
-                className="hover:text-guidr-green transition-colors"
-              >
-                Privacy Policy
-              </a>
-            </div>
-
-            {/* Copyright */}
-            <div className="text-center text-gray-400 text-sm">
-              Copyright © 2025 GUIDR®. All Rights Reserved
-            </div>
-          </div>
-        </footer>
+        <Footer year={2025} />
       </div>
     </div>
   );

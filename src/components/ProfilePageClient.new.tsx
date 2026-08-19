@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import Image from "next/image";
+import TopNavbar from "./TopNavbar";
+import Footer from "./Footer";
 
 interface Profile {
   id: string;
@@ -25,6 +27,59 @@ interface Profile {
 interface ProfilePageClientProps {
   initialProfile: Profile | null;
   isOwnProfile: boolean;
+}
+
+type ProfileInputFieldProps = {
+  label: string;
+  name?: string;
+  type?: string;
+  value?: string;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+  placeholder?: string;
+  disabled?: boolean;
+};
+
+function ProfileInputField({
+  label,
+  name,
+  type = "text",
+  value,
+  onChange,
+  placeholder = "",
+  disabled = false,
+}: ProfileInputFieldProps) {
+  return (
+    <div className="flex flex-col gap-2 mb-6">
+      <label className="text-white font-['Arimo'] text-sm tracking-wide font-bold">
+        {label}
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        placeholder={placeholder}
+        className={`bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo'] focus:outline-none focus:border-[#228C1D] ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      />
+    </div>
+  );
+}
+
+function Card({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`bg-[#0A0D0A] border border-white/5 rounded-2xl p-8 mb-6 ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
 export default function ProfilePageClient({
@@ -59,16 +114,38 @@ export default function ProfilePageClient({
   const [connectedProvider, setConnectedProvider] = useState<string | null>(
     null,
   );
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<{
+    username: string;
+    photo_url?: string;
+  } | null>(null);
 
   const isOrganization = initialProfile?.user_type?.includes("company");
   const isMentor = initialProfile?.user_type?.includes("student");
 
   useEffect(() => {
     const fetchUserData = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        setCurrentUserId(user.id);
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("username, photo_url")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profileData) {
+          setCurrentUserProfile({
+            username: profileData.username,
+            photo_url: profileData.photo_url,
+          });
+        }
+      }
+
       if (isOwnProfile) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
         if (user) {
           setUserEmail(user.email || "");
           const providers = user.app_metadata?.providers || [];
@@ -125,25 +202,39 @@ export default function ProfilePageClient({
     setSuccess(null);
 
     try {
-      const updateData: {
-        bio: string;
-        skills: string;
-        photo_url: string;
-        headline: string;
-        mentorship_link: string;
-        collaboration_link: string;
-        year_standing: string;
-        username?: string;
-        program?: string;
-      } = {
+      const updateData: Record<string, string | string[]> = {
         bio: formData.bio,
         skills: formData.skills,
         photo_url: formData.photo_url,
-        headline: formData.headline,
-        mentorship_link: formData.mentorship_link,
-        collaboration_link: formData.collaboration_link,
-        year_standing: formData.year_standing,
       };
+
+      if (initialProfile?.headline !== undefined) {
+        updateData.headline = formData.headline;
+      }
+
+      if (initialProfile?.mentorship_link !== undefined) {
+        updateData.mentorship_link = formData.mentorship_link;
+      }
+
+      if (initialProfile?.collaboration_link !== undefined) {
+        updateData.collaboration_link = formData.collaboration_link;
+      }
+
+      if (initialProfile?.year_standing !== undefined) {
+        updateData.year_standing = formData.year_standing;
+      }
+
+      const resolvedUserTypes = initialProfile?.user_type?.length
+        ? initialProfile.user_type
+        : isOrganization
+          ? ["company"]
+          : isMentor
+            ? ["student"]
+            : undefined;
+
+      if (resolvedUserTypes) {
+        updateData.user_type = resolvedUserTypes;
+      }
 
       if (isOrganization) {
         updateData.username = formData.username;
@@ -208,56 +299,12 @@ export default function ProfilePageClient({
     }
   };
 
-  const Card = ({
-    children,
-    className = "",
-  }: {
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <div
-      className={`bg-[#0A0D0A] border border-white/5 rounded-2xl p-8 mb-6 ${className}`}
-    >
-      {children}
-    </div>
-  );
-
-  const InputField = ({
-    label,
-    name,
-    type = "text",
-    value,
-    onChange,
-    placeholder = "",
-    disabled = false,
-  }: {
-    label: string;
-    name?: string;
-    type?: string;
-    value?: string;
-    onChange?: React.ChangeEventHandler<HTMLInputElement>;
-    placeholder?: string;
-    disabled?: boolean;
-  }) => (
-    <div className="flex flex-col gap-2 mb-6">
-      <label className="text-white font-['Arimo'] text-sm tracking-wide font-bold">
-        {label}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        placeholder={placeholder}
-        className={`bg-transparent border border-white/20 rounded-full px-6 py-3 text-white font-['Arimo'] focus:outline-none focus:border-[#228C1D] ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-      />
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-[#060806] font-['League_Spartan',sans-serif] pb-24">
-      {/* Header logic similar to BrowseFeed is expected to be wrapped by layout or added here. Assuming Navigation exists */}
+      <TopNavbar
+        currentUserId={currentUserId}
+        currentUserProfile={currentUserProfile}
+      />
 
       {/* Main Content Area */}
       <main className="max-w-[1512px] mx-auto px-8 pt-32 w-full flex flex-col items-start gap-8">
@@ -432,7 +479,7 @@ export default function ProfilePageClient({
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                   <div>
-                    <InputField
+                    <ProfileInputField
                       label="Email:"
                       type="email"
                       value={userEmail}
@@ -445,7 +492,7 @@ export default function ProfilePageClient({
                     )}
                   </div>
                   <div>
-                    <InputField
+                    <ProfileInputField
                       label="Password:"
                       type="password"
                       value="••••••••"
@@ -504,7 +551,7 @@ export default function ProfilePageClient({
                 <>
                   {isEditing ? (
                     <>
-                      <InputField
+                      <ProfileInputField
                         label="Organization's Name"
                         name="username"
                         value={formData.username}
@@ -529,7 +576,7 @@ export default function ProfilePageClient({
                           placeholder="Describe your mission, focus, or latest hiring need"
                         />
                       </div>
-                      <InputField
+                      <ProfileInputField
                         label="Website / Collaboration Link"
                         name="collaboration_link"
                         value={formData.collaboration_link}
@@ -565,20 +612,20 @@ export default function ProfilePageClient({
                   {isEditing ? (
                     <>
                       <div className="grid grid-cols-2 gap-8 mb-2">
-                        <InputField
+                        <ProfileInputField
                           label="First name"
                           name="firstName"
                           value={formData.firstName}
                           onChange={handleInputChange}
                         />
-                        <InputField
+                        <ProfileInputField
                           label="Last name"
                           name="lastName"
                           value={formData.lastName}
                           onChange={handleInputChange}
                         />
                       </div>
-                      <InputField
+                      <ProfileInputField
                         label="Profession / Title"
                         name="profession"
                         value={formData.profession}
@@ -618,14 +665,14 @@ export default function ProfilePageClient({
                         />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-2">
-                        <InputField
+                        <ProfileInputField
                           label="Mentorship Link"
                           name="mentorship_link"
                           value={formData.mentorship_link}
                           onChange={handleInputChange}
                           placeholder="https://..."
                         />
-                        <InputField
+                        <ProfileInputField
                           label="Collaboration Link"
                           name="collaboration_link"
                           value={formData.collaboration_link}
@@ -784,6 +831,8 @@ export default function ProfilePageClient({
           </div>
         </div>
       </main>
+
+      <Footer year={2025} />
     </div>
   );
 }
